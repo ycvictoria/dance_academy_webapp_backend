@@ -143,3 +143,41 @@ class LoginSerializer(serializers.Serializer):
             'refresh': instance['refresh'],
             'user': UserSerializer(instance['user']).data,
         }
+
+
+class RegisterSerializer(serializers.ModelSerializer):
+    password = serializers.CharField(write_only=True, min_length=8)
+    password_confirm = serializers.CharField(write_only=True, min_length=8)
+
+    class Meta:
+        model = User
+        fields = ['email', 'password', 'password_confirm', 'first_name', 'last_name']
+
+    def validate(self, attrs):
+        if attrs['password'] != attrs['password_confirm']:
+            raise serializers.ValidationError(
+                {'password_confirm': 'Las contraseñas no coinciden.'}
+            )
+        return attrs
+
+    def validate_email(self, value):
+        if User.objects.filter(email__iexact=value).exists():
+            raise serializers.ValidationError('Ya existe un usuario con este correo.')
+        return value
+
+    def create(self, validated_data):
+        validated_data.pop('password_confirm')
+        password = validated_data.pop('password')
+        email = validated_data['email']
+        user = User(
+            username=email.split('@')[0],
+            email=email,
+            first_name=validated_data.get('first_name', ''),
+            last_name=validated_data.get('last_name', ''),
+            role=User.Role.CLIENT,
+            is_approved=False,
+            is_active=True,
+        )
+        user.set_password(password)
+        user.save()
+        return user

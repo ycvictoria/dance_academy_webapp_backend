@@ -1,12 +1,19 @@
 from django.db.models import Q
 
-from rest_framework import viewsets
+from rest_framework import status, viewsets
+from rest_framework.decorators import action
 from rest_framework.filters import OrderingFilter, SearchFilter
-from rest_framework.permissions import IsAuthenticated
+from rest_framework.permissions import AllowAny, IsAuthenticated
+from rest_framework.response import Response
 
 from .models import User
 from .permissions import INTERNAL_ROLES, IsAdminOrDirector
-from .serializers import UserCreateSerializer, UserInternalUpdateSerializer, UserSerializer
+from .serializers import (
+    RegisterSerializer,
+    UserCreateSerializer,
+    UserInternalUpdateSerializer,
+    UserSerializer,
+)
 
 
 class UserViewSet(viewsets.ModelViewSet):
@@ -26,6 +33,8 @@ class UserViewSet(viewsets.ModelViewSet):
         return UserSerializer
 
     def get_permissions(self):
+        if self.action == 'register':
+            return [AllowAny()]
         if self.action in ('create', 'list', 'update', 'partial_update', 'destroy'):
             return [IsAdminOrDirector()]
         return super().get_permissions()
@@ -59,3 +68,11 @@ class UserViewSet(viewsets.ModelViewSet):
     def perform_destroy(self, instance):
         instance.is_active = False
         instance.save(update_fields=['is_active'])
+
+    @action(detail=False, methods=['post'], url_path='register')
+    def register(self, request):
+        serializer = RegisterSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        user = serializer.save()
+        response_serializer = UserSerializer(user)
+        return Response(response_serializer.data, status=status.HTTP_201_CREATED)
