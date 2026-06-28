@@ -1,6 +1,8 @@
+import sys
+from datetime import timedelta
+
 import environ
 from pathlib import Path
-
 # 1. Rutas base del proyecto
 BASE_DIR = Path(__file__).resolve().parent.parent
 
@@ -82,6 +84,14 @@ DATABASES = {
     }
 }
 
+if 'test' in sys.argv:
+    DATABASES = {
+        'default': {
+            'ENGINE': 'django.db.backends.sqlite3',
+            'NAME': BASE_DIR / 'test_db.sqlite3',
+        }
+    }
+
 # 8. Validadores de contraseñas por defecto de Django
 AUTH_PASSWORD_VALIDATORS = [
     {
@@ -129,8 +139,6 @@ REST_FRAMEWORK = {
         'rest_framework.permissions.IsAuthenticated',
     ],
 }
-
-from datetime import timedelta
 
 SIMPLE_JWT = {
     'ACCESS_TOKEN_LIFETIME': timedelta(minutes=60),
